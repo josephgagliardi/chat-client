@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Chat Client</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+  <style>
+  body {
+    padding: 10px;
+    max-height: 1000px;
+  }
+  .draggable-element {
+    color: white;
+    padding: 20px 2px 0px 2px;
+    cursor: move;
+    position: relative;
+  }
+  </style>
+</head>
+
+<body>
+    <input name="user-name" id="user-name"></input><button id="create_frame_button">Join Chat</button>
+    <br/>
+    <br/>
+    <br/>
+    <script>
+        // addEventListener support for IE8
+        var bindEvent = function (element, eventName, eventHandler) {
+            if (element.addEventListener){
+                element.addEventListener(eventName, eventHandler, false);
+            } else if (element.attachEvent) {
+                element.attachEvent("on" + eventName, eventHandler);
+            }
+        };
+
+        var senderSource = "../chat-client/sender.html";
+
+        // Send a message to the child iframes other than sender
+        var sendMessage = function(msg, sender) {
+            var frames = document.getElementsByClassName("chat-window");
+            for (let frame of frames) {
+                if(frame !== sender) {
+                    try {
+                        var message_data = {
+                            "messagetext": msg,
+                            "id": sender.id,
+                            "sendername": sender.name
+                        };
+                       frame.contentWindow.postMessage(message_data, "*"); 
+                    } catch (error) {
+                        messageFailure(sender, "There was an error posting your message.");
+                    }
+                    
+                }
+            }
+        };
+
+        var messageFailure = function (sender, failuremessage) {
+            sender.contentWindow.postMessage(failuremessage);
+        };
+
+        var createFrame = function (username) {
+            var frameID = parseInt(Math.random()*1000000000, 10);
+            var iframe = document.createElement("iframe");
+            iframe.setAttribute("src", senderSource);
+            iframe.setAttribute("id", frameID);
+            iframe.setAttribute("class", "chat-window draggable-element");
+            iframe.setAttribute("frameBorder", "0");
+            iframe.setAttribute("scrolling", "no");
+            iframe.setAttribute("name", username);
+            iframe.style.width = 500 + "px";
+            iframe.style.height = 450 + "px";
+            window.document.body.appendChild(iframe);
+            enableDrag(frameID);
+            document.getElementById("user-name").value = '';
+        };
+
+        createButton = document.getElementById("create_frame_button");
+
+        // Create new chat window
+        bindEvent(createButton, "click", function (e) {
+            var username = document.getElementById("user-name").value;
+            if (username.length > 0) {
+                createFrame(username);
+            }
+        });
+
+        // Listen to message from child window
+        bindEvent(window, "message", function (e) {
+            var sender = getFrameTarget(e);
+            sendMessage(e.data, sender);
+        });
+
+        var getFrameTarget = function (e) {
+            var frames = document.getElementsByTagName("iframe"),
+                frameId = 0,
+                framesLength = frames.length;
+
+            for (; frameId < framesLength; frameId++) {
+                if (frames[frameId].contentWindow === e.source) {
+                    return frames[frameId];
+                }
+            }
+
+            return null;
+        };
+
+        var selected = null, // Object of the element to be moved
+            x_pos = 0, y_pos = 0, // Stores x & y coordinates of the mouse pointer
+            x_elem = 0, y_elem = 0; // Stores top, left values (edge) of the element
+
+        // Will be called when user starts dragging an element
+        var _drag_init = function (elem) {
+            selected = elem;
+            x_elem = x_pos - selected.offsetLeft;
+            y_elem = y_pos - selected.offsetTop;
+        };
+
+        // Will be called when user dragging an element
+        var _move_elem = function (e) {
+            x_pos = window.document.all ? window.event.clientX : e.pageX;
+            y_pos = window.document.all ? window.event.clientY : e.pageY;
+            if (selected !== null) {
+                selected.style.left = (x_pos - x_elem) + "px";
+                selected.style.top = (y_pos - y_elem) + "px";
+            }
+        };
+
+        // Destroy the object when we are done
+        var _destroy = function () {
+            selected = null;
+        };
+
+        var enableDrag = function(id) {
+            document.getElementById(id).onmousedown = function () {
+                _drag_init(this);
+                return false;
+            };
+        };
+
+
+        document.onmousemove = _move_elem;
+        document.onmouseup = _destroy;
+    </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Chat Window</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="chatwindow.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+</head>
+<div>
+    <div class="row">
+        <div>
+            <div class="panel panel-primary">
+                <div class="panel-heading" id="accordion">
+                    <span class="glyphicon glyphicon-comment"></span> Chat
+                    <div class="btn-group pull-right">
+                        <a class="btn btn-default btn-xs" data-parent="#accordion" data-toggle="collapse" href="#collapseOne" type="button"><span class="glyphicon glyphicon-chevron-down"></span></a>
+                    </div>
+                </div>
+                <div aria-expanded="true" class="panel-collapse collapse in" id="collapseOne">
+                    <div class="panel-body">
+                        <ul class="chat" id="results"></ul>
+                    </div>
+                    <div class="panel-footer">
+                        <div class="input-group">
+                            <input class="form-control input-sm" id="btn-input" placeholder="Type your message here..." type="text"> <span class="input-group-btn"><button class="btn btn-warning btn-sm" id="btn-chat"><span class="input-group-btn"><span class="input-group-btn"><span class="input-group-btn">Send</span></span></span></button></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<template id="send-message-template">
+    <ul>
+        <li class="clearfix">
+            <span class="chat-img pull-left"><img alt="User Avatar" class="img-circle" id="avi-circle" src="http://placehold.it/50/55C1E7/fff&text=ME"></span>
+            <div class="chat-body clearfix">
+                <div class="header">
+                    <strong class="primary-font"></strong> <small class="pull-right text-muted"><span class="glyphicon glyphicon-time"></span></small>
+                </div>
+                <p id="chat-text"></p>
+            </div>
+        </li>
+    </ul>
+</template>
+<template id="rec-message-template">
+    <ul>
+        <li class="right clearfix">
+            <span class="chat-img pull-right"><img alt="User Avatar" class="img-circle" id="avi-circle" src="http://placehold.it/50/FA6F57/fff&amp;text=U"></span>
+            <div class="chat-body clearfix">
+                <div class="header">
+                    <small class=" text-muted"><span class="glyphicon glyphicon-time"></span></small> <strong class="pull-right primary-font">Davy Jones</strong>
+                </div>
+                <p id="chat-text"></p>
+            </div>
+        </li>
+    </ul>
+</template>
+<script>
+        // addEventListener for IE8
+        var bindEvent = function (element, eventName, eventHandler) {
+            if (element.addEventListener) {
+                element.addEventListener(eventName, eventHandler, false);
+            } else if (element.attachEvent) {
+                element.attachEvent("on" + eventName, eventHandler);
+            }
+        };
+
+        // Send a message to the parent
+        var sendMessage = function (msg) {
+            window.parent.postMessage(msg, "*");
+        };
+
+
+        var buildMessage = function(msg) {
+            var isSelf = msg.id == self.id;
+
+            //Set template and styling of self-sent messages vs. Received messages
+            if (isSelf) {
+                var messageTemplate = window.document.getElementById("send-message-template").content.querySelector("li"), message = messageTemplate.cloneNode(true);
+                message.getElementsByTagName("img")[0].setAttribute("src", "http://placehold.it/50/55C1E7/fff&text=ME");
+            } else {
+                var messageTemplate = window.document.getElementById("rec-message-template").content.querySelector("li"), message = messageTemplate.cloneNode(true);
+                message.getElementsByTagName("img")[0].setAttribute("src", "http://placehold.it/50/FA6F57/fff&amp;text=" + msg.sendername.charAt(0).toUpperCase());
+            }
+           //Adjust dynamic message content
+           message.getElementsByTagName("p")[0].textContent = msg.messagetext;
+           message.getElementsByClassName("text-muted")[0].textContent = new Date().toLocaleTimeString();
+           message.getElementsByClassName("primary-font")[0].textContent = msg.sendername;
+
+           return message;
+        };
+
+
+        var results = document.getElementById("results"),
+            messageButton = document.getElementById("btn-chat"), input = document.getElementById("btn-input");
+
+        // Listen to messages from parent window
+        bindEvent(window, "message", function (e) {
+            results.append(buildMessage(e.data));
+            scrollChat();
+        });
+
+        // Send message button listener
+        bindEvent(messageButton, "click", function (e) {
+            if (input.value.length > 0) {
+                var message_data = {
+                    "messagetext": input.value,
+                    "id": self.id,
+                    "sendername": self.name
+                };
+                var message = buildMessage(message_data);
+                results.appendChild(message);
+                input.value = '';
+                sendMessage(message_data.messagetext);
+                scrollChat();
+            } else {
+                return;
+            }
+        });
+
+        //Allow Enter key to send Message
+        bindEvent(input, "keyup", function (e) {
+            e.preventDefault();
+            if(e.keyCode == 13) {
+                messageButton.click();
+            }
+        });
+
+        var scrollChat = function() {
+            var panel = document.getElementsByClassName("panel-body")[0];
+            panel.scrollTop = panel.scrollHeight;
+        };
+
+        //Determine if message sender is self
+        var getFrameTarget = function (e) {
+            var frames = document.getElementsByTagName("iframe"),
+                frameId = 0,
+                framesLength = frames.length;
+
+            for (; frameId < framesLength; frameId++) {
+                if (frames[frameId].contentWindow === e.source) {
+                    return frames[frameId];
+                }
+            }
+
+            return null;
+        };
+
+
+</script>
+</html>
